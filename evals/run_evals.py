@@ -32,10 +32,10 @@ def numbers(text):
 
 
 def invented_numbers(answer):
-    """Numbers >= 32 in the answer that no tool result contains (within 1%, or rounded to thousands)."""
+    """Numbers >= 32 (years excluded) in the answer that no tool result contains (within 1%, or in thousands)."""
     seen = numbers(json.dumps([c["result"] for c in answer.tool_calls], ensure_ascii=False, default=str))
     return [n for n in numbers(answer.text)
-            if n >= 32 and not any(abs(n - s) <= 0.01 * s or round(n) == round(s / 1000) for s in seen)]
+            if n >= 32 and not 2000 <= n <= 2100 and not any(abs(n - s) <= 0.01 * s or round(n) == round(s / 1000) for s in seen)]
 
 
 def grade(expect, answer):
@@ -54,6 +54,8 @@ def grade(expect, answer):
     for s in expect.get("contains_all", []):
         if s not in answer.text:
             failed.append(f"{s!r} missing from answer")
+    if found := [s for s in expect.get("contains_none", []) if s in answer.text]:
+        failed.append(f"forbidden words in answer: {found}")
     if expect.get("no_invented_numbers") and (bad := invented_numbers(answer)):
         failed.append(f"numbers not from a tool: {bad}")
     return failed
