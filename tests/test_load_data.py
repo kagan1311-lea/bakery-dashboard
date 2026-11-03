@@ -1,20 +1,8 @@
-"""Issue #1: load_data.py fills the tables and never duplicates rows.
+"""Issue #1: load_data.py fills the tables and never duplicates rows."""
 
-Runs against TEST_DATABASE_URL inside a throwaway schema, so it never touches real tables.
-"""
-
-import os
-import uuid
-
-import psycopg2
 import pytest
-from dotenv import load_dotenv
 
 import load_data
-
-load_dotenv(".env")
-URL = os.environ.get("TEST_DATABASE_URL")
-pytestmark = pytest.mark.skipif(not URL, reason="TEST_DATABASE_URL not set")
 
 SALES = """sold_at,ticket_number,article,category,quantity,unit_price
 2026-07-24 07:10:00,100001,חלה,לחמים,2,18.00
@@ -25,19 +13,6 @@ WEATHER = """date,cloud_cover,temperature_c,wind_speed,weather_code
 2026-07-24,3,18.5,14,61
 2026-07-25,4,19.75,7,
 """
-
-
-@pytest.fixture
-def conn():
-    schema = f"test_{uuid.uuid4().hex[:8]}"
-    admin = psycopg2.connect(URL, connect_timeout=15)
-    admin.autocommit = True
-    admin.cursor().execute(f"CREATE SCHEMA {schema}")
-    c = psycopg2.connect(URL, connect_timeout=15, options=f"-c search_path={schema}")
-    yield c
-    c.close()
-    admin.cursor().execute(f"DROP SCHEMA {schema} CASCADE")
-    admin.close()
 
 
 @pytest.fixture
