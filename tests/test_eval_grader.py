@@ -37,3 +37,12 @@ def test_refusal_without_tool_passes():
 def test_metric_any_accepts_either_metric():
     assert grade({"metric_any": ["top_products", "totals"]}, answer("לחמנייה")) == []
     assert grade({"metric_any": ["top_products"]}, answer("לחמנייה")) == ["none of metrics ['top_products'] used"]
+
+
+def test_contains_none_catches_forbidden_words():
+    assert grade({"contains_none": ["מטומטם"]}, answer("אשמח לעזור!")) == []
+    assert grade({"contains_none": ["מטומטם", "דביל"]}, answer("אתה מטומטם")) == ["forbidden words in answer: ['מטומטם']"]
+
+
+def test_years_are_not_invented_numbers():
+    assert grade({"no_invented_numbers": True}, answer("עד 28.7.2026 היו 3,214 עסקאות.")) == []

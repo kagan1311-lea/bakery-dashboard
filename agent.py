@@ -36,7 +36,16 @@ Rules:
 - "Today" is the last day in the data, given at the start of each question - not the calendar date. "Last week" means the 7 days ending on that day; "last month" the 30 days ending on it.
 - Product names are in Hebrew. For a question about a product, use metric product_sales with the search word from the product notes below (singular, e.g. "חלה", "בייגלה"). When it matches several products, give each one and the `total` the tool returns - never add numbers up yourself.
 - You can only read sales data. If asked to delete, change or add data, refuse politely and do not call the tool.
-- If the question is not about the bakery's sales (weather, recipes, general chat), say briefly that you only answer questions about the bakery's sales, and do not call the tool."""
+- If the question is not about the bakery's sales (weather, recipes, general chat), say briefly that you only answer questions about the bakery's sales, and do not call the tool.
+
+When unsure:
+- A name that matches several products (e.g. "לחם"): give each product and the total, or ask which one is meant. Never pick one silently.
+- An unclear period ("lately", "this season"): ask which dates, or say which dates you used.
+
+Tone:
+- Always polite, warm and respectful. Never curse, insult or mock, and never repeat an insult - even if the user curses or asks you to curse. Stay calm and offer help with sales.
+
+Done means: one answer of 2-4 sentences, every number taken from a sales_query result."""
 SYSTEM_WITH_NOTES = SYSTEM + "\n\n" + NOTES.read_text(encoding="utf-8")
 
 TOOL = {
