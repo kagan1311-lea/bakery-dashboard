@@ -117,6 +117,10 @@ def split_revenue(rng, group, day, target):
     items, remaining = [], target
     while remaining >= cheapest / 2:
         name, price, _, max_qty = rng.choices(choices, weights)[0]
+        if price > remaining:  # last item: the one whose price lands closest to the target
+            name, price, _, _ = min(choices, key=lambda c: abs(c[1] - remaining))
+            items.append((name, category, 1, price))
+            break
         qty = min(rng.choices(range(1, max_qty + 1), [2 ** -q for q in range(max_qty)])[0],
                   max(1, round(remaining / price)))
         items.append((name, category, qty, price))

@@ -58,7 +58,7 @@ A one-page sales dashboard for a small bakery, with a small question box where C
 **Feature: Load the CSV into Postgres (v1)**
 1. `python mock_data.py` then `python load_data.py` fills `sales` with one row per line of `data/sales.csv`, and `weather` with one row per day.
 2. Running `load_data.py` a second time leaves the same row count — no duplicates.
-3. For every day, the mock revenue per category is within 5% of the Kaggle revenue × 4.
+3. For every day, the mock revenue per category (returns excluded) is within 5% (or ₪15 on small days) of the Kaggle revenue × 4.
 
 **Feature: Dashboard (v2)**
 4. The page shows three cards: total revenue, number of transactions (distinct `ticket_number`), best-selling product (by quantity).

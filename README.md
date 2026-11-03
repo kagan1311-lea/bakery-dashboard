@@ -17,6 +17,7 @@ Built as a Lesson 9 (Agentic Engineering) exercise: design → place → manage 
 ## Run locally
 
 ```bash
+python -m venv .venv && .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env        # fill in the values
 python mock_data.py         # data/raw/*.csv -> data/sales.csv, data/weather.csv

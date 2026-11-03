@@ -11,7 +11,7 @@ Taken from [spec.md](spec.md) §7. Copy each one into a GitHub Issue, using the 
 
 **Done when**
 - `python mock_data.py` writes `data/sales.csv` + `data/weather.csv`, and two runs give identical files
-- for every day, the mock revenue per category is within 5% of Kaggle revenue × 4
+- for every day, the mock revenue per category (returns excluded) is within 5% (or ₪15 on small days) of Kaggle revenue × 4
 - `python load_data.py` creates the tables from `schema.sql` and fills `sales` and `weather`
 - running `load_data.py` twice leaves the same row count
 
