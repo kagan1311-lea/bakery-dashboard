@@ -120,3 +120,10 @@ def test_unexpected_ask_error_does_not_crash_the_page(sales, schema_url, monkeyp
     assert not at.exception
     assert [e.value for e in at.error] == ["משהו השתבש. נסו שוב בעוד דקה."]
     assert len(at.metric) == 3  # the dashboard above still renders
+
+
+def test_ask_error_emails_the_maintainer(sales, schema_url, monkeypatch):
+    calls = []
+    monkeypatch.setattr("alerts.send_error_alert", lambda *args: calls.append(args))
+    ask_on_page(monkeypatch, schema_url, RuntimeError("boom"))
+    assert calls == [("RuntimeError", "מה נמכר הכי טוב?", "boom")]

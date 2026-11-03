@@ -17,6 +17,7 @@ import streamlit as st
 from dotenv import load_dotenv
 
 import agent
+import alerts
 import db
 
 load_dotenv(".env")
@@ -139,17 +140,21 @@ if asked and question.strip():
             conn = db.connect()
             answer = agent.ask(question.strip(), conn)
             agent.log_run(conn, session_id, question.strip(), answer)
-        except anthropic.APITimeoutError:
+        except anthropic.APITimeoutError as e:
             log.warning("ask timed out: %r", question)
+            alerts.send_error_alert(type(e).__name__, question, str(e))
             st.error("העוזר לא ענה בזמן. נסו שוב בעוד דקה.")
         except anthropic.APIError as e:
             log.warning("ask failed (%s): %r", type(e).__name__, question)
+            alerts.send_error_alert(type(e).__name__, question, str(e))
             st.error(f"העוזר לא זמין כרגע. נסו שוב בעוד דקה. ({type(e).__name__})")
         except psycopg2.Error as e:
             log.warning("ask DB error (%s): %r", type(e).__name__, question)
+            alerts.send_error_alert(type(e).__name__, question, str(e))
             st.error("אין חיבור למסד הנתונים. נסו שוב בעוד דקה.")
-        except Exception:
+        except Exception as e:
             log.exception("ask failed unexpectedly: %r", question)
+            alerts.send_error_alert(type(e).__name__, question, str(e))
             st.error("משהו השתבש. נסו שוב בעוד דקה.")
         finally:
             if conn is not None:
