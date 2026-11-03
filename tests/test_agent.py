@@ -130,3 +130,36 @@ def test_log_run_saves_tokens_and_cost(sales):
         session_id, text_, calls, tokens, cost = cur.fetchone()
     assert (session_id, text_, tokens, float(cost)) == ("s1", "לחמנייה", 120, 0.00002)
     assert calls[0]["input"]["metric"] == "totals"
+
+
+def test_cut_answer_is_replaced_by_a_clear_message(sales):
+    cut = NS(stop_reason="max_tokens", usage=usage(), content=[NS(type="text", text="בשבוע שעבר נמכרו")])
+    answer = agent.ask("?", sales, FakeClient(cut))
+    assert answer.text == agent.TOO_LONG
+
+
+def test_database_error_in_the_tool_goes_back_to_the_model(sales, monkeypatch):
+    def broken(*args):
+        raise psycopg2.OperationalError("server closed the connection")
+
+    monkeypatch.setattr(agent.db, "totals", broken)
+    client = FakeClient(
+        tool_use({"metric": "totals", "start_date": str(START), "end_date": str(END)}),
+        text("הנתונים לא זמינים כרגע."),
+    )
+    answer = agent.ask("כמה הכנסות?", sales, client)
+    sent = client.requests[1]["messages"][-1]["content"][0]
+    assert sent["is_error"] and "database error (OperationalError)" in sent["content"]
+    assert answer.text == "הנתונים לא זמינים כרגע."
+
+
+def test_default_client_has_a_timeout(sales, monkeypatch):
+    made = {}
+
+    def fake_anthropic(**kwargs):
+        made.update(kwargs)
+        return FakeClient(text("שלום"))
+
+    monkeypatch.setattr(agent.anthropic, "Anthropic", fake_anthropic)
+    agent.ask("?", sales)
+    assert made == {"timeout": agent.TIMEOUT_S, "max_retries": agent.MAX_RETRIES}

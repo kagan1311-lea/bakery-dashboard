@@ -4,6 +4,7 @@ Run: streamlit run app.py   (needs DATABASE_URL and ANTHROPIC_API_KEY, see .env.
 """
 
 import base64
+import logging
 import os
 import uuid
 from pathlib import Path
@@ -19,6 +20,7 @@ import agent
 import db
 
 load_dotenv(".env")
+log = logging.getLogger("bakery.ask")
 st.set_page_config(page_title="מכירות מאפיית הכיכר", page_icon="🥐", layout="wide")
 BACKGROUND = base64.b64encode((Path(__file__).parent / "assets" / "bakery-bg.jpg").read_bytes()).decode()
 st.markdown(
@@ -130,16 +132,28 @@ with st.form("ask"):
     asked = st.form_submit_button("אישור")
 
 if asked and question.strip():
+    answer = None
     with st.spinner("בודק בנתונים…"):
-        conn = db.connect()
+        conn = None
         try:
+            conn = db.connect()
             answer = agent.ask(question.strip(), conn)
             agent.log_run(conn, session_id, question.strip(), answer)
+        except anthropic.APITimeoutError:
+            log.warning("ask timed out: %r", question)
+            st.error("העוזר לא ענה בזמן. נסו שוב בעוד דקה.")
         except anthropic.APIError as e:
-            answer = None
+            log.warning("ask failed (%s): %r", type(e).__name__, question)
             st.error(f"העוזר לא זמין כרגע. נסו שוב בעוד דקה. ({type(e).__name__})")
+        except psycopg2.Error as e:
+            log.warning("ask DB error (%s): %r", type(e).__name__, question)
+            st.error("אין חיבור למסד הנתונים. נסו שוב בעוד דקה.")
+        except Exception:
+            log.exception("ask failed unexpectedly: %r", question)
+            st.error("משהו השתבש. נסו שוב בעוד דקה.")
         finally:
-            conn.close()
+            if conn is not None:
+                conn.close()
     if answer:
         st.session_state["last_answer"] = answer
 

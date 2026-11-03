@@ -101,7 +101,8 @@ Every query runs inside a `SET TRANSACTION READ ONLY` transaction, so Postgres i
 | Us → Anthropic | Anthropic SDK | Built-in retry with backoff on 429/5xx (max 2 retries). Then "try again in a minute". |
 | Our wallet | `agent.py` + `agent_runs` | **$1 / month**, then the box is disabled until the 1st (Asia/Jerusalem) |
 | Our wallet, hard stop | Anthropic Console | Workspace `bakery-dashboard` spend limit; the API key lives in that workspace |
-| Agent loop | `agent.py` | Max 3 tool calls per question |
+| Agent loop | `agent.py` | Max 3 tool calls per question · 20 s timeout per model call, 2 retries · a cut answer (`max_tokens`) is replaced by a clear message · a DB error inside the tool goes back to the model as `is_error` |
+| Page | `app.py` | Timeout, API, DB and unexpected errors each show a short Hebrew message and are logged (`bakery.ask` logger → Railway logs); the dashboard above keeps working |
 
 ## Hosting (Part 2 — planned)
 

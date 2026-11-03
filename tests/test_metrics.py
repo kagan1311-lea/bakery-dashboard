@@ -91,3 +91,32 @@ def test_page_shows_error_when_db_unreachable(monkeypatch):
     assert not at.exception
     assert len(at.error) == 1
     assert not at.metric
+
+
+def ask_on_page(monkeypatch, url, error):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+    def failing_ask(*args, **kwargs):
+        raise error
+
+    monkeypatch.setattr("agent.ask", failing_ask)
+    at = run_app(monkeypatch, url)
+    at.text_input[0].input("מה נמכר הכי טוב?")
+    at.button[0].click().run()
+    return at
+
+
+def test_ask_timeout_shows_a_friendly_message(sales, schema_url, monkeypatch):
+    import anthropic
+    import httpx2
+
+    at = ask_on_page(monkeypatch, schema_url, anthropic.APITimeoutError(request=httpx2.Request("POST", "https://api")))
+    assert not at.exception
+    assert [e.value for e in at.error] == ["העוזר לא ענה בזמן. נסו שוב בעוד דקה."]
+
+
+def test_unexpected_ask_error_does_not_crash_the_page(sales, schema_url, monkeypatch):
+    at = ask_on_page(monkeypatch, schema_url, RuntimeError("boom"))
+    assert not at.exception
+    assert [e.value for e in at.error] == ["משהו השתבש. נסו שוב בעוד דקה."]
+    assert len(at.metric) == 3  # the dashboard above still renders
