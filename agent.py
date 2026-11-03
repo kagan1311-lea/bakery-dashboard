@@ -7,6 +7,7 @@ parameterised query inside a READ ONLY transaction. See architecture.md → Tool
 import json
 from dataclasses import dataclass, field
 from datetime import date
+from pathlib import Path
 
 import anthropic
 from psycopg2.extras import Json
@@ -25,6 +26,7 @@ PRICE_CACHE_WRITE = PRICE_INPUT * 1.25
 PRICE_CACHE_READ = PRICE_INPUT * 0.1
 
 METRICS = ("totals", "top_products", "revenue_by_day", "product_sales")
+NOTES = Path(__file__).with_name("notes") / "products.md"
 
 SYSTEM = """You are the assistant of a small Israeli bakery. Staff ask you about the bakery's sales.
 
@@ -32,9 +34,10 @@ Rules:
 - Answer in Hebrew, in 2-4 short sentences. Money is in shekels (₪).
 - Every number in your answer must come from a sales_query result. Never estimate or invent a number. If the tool did not return it, say you don't have that figure.
 - "Today" is the last day in the data, given at the start of each question - not the calendar date. "Last week" means the 7 days ending on that day; "last month" the 30 days ending on it.
-- Product names are in Hebrew. For a question about one product, use metric product_sales with a short Hebrew name (e.g. "חלה", "סופגנייה").
+- Product names are in Hebrew. For a question about a product, use metric product_sales with the search word from the product notes below (singular, e.g. "חלה", "בייגלה"). When it matches several products, give each one and the `total` the tool returns - never add numbers up yourself.
 - You can only read sales data. If asked to delete, change or add data, refuse politely and do not call the tool.
 - If the question is not about the bakery's sales (weather, recipes, general chat), say briefly that you only answer questions about the bakery's sales, and do not call the tool."""
+SYSTEM_WITH_NOTES = SYSTEM + "\n\n" + NOTES.read_text(encoding="utf-8")
 
 TOOL = {
     "name": "sales_query",
@@ -43,7 +46,8 @@ TOOL = {
         "totals: revenue, number of transactions and best-selling product. "
         "top_products: products ranked by units sold. "
         "revenue_by_day: revenue per day. "
-        "product_sales: units and revenue of products whose name contains `product`."
+        "product_sales: units and revenue of products whose name contains `product`, "
+        "plus a total when several products match."
     ),
     "input_schema": {
         "type": "object",
@@ -116,7 +120,10 @@ def run_tool(conn, args, first, last):
     if not product:
         raise ValueError("product is required for product_sales")
     rows = read_only(conn, lambda c: db.product_sales(c, start, end, product))
-    return period | {"products": [{"product": a, "units": u, "revenue": round(r)} for a, u, r in rows]}
+    result = period | {"products": [{"product": a, "units": u, "revenue": round(r)} for a, u, r in rows]}
+    if len(rows) > 1:
+        result["total"] = {"units": sum(u for _, u, _ in rows), "revenue": round(sum(r for _, _, r in rows))}
+    return result
 
 
 def ask(question, conn, client=None):
@@ -135,7 +142,7 @@ def ask(question, conn, client=None):
             model=MODEL,
             max_tokens=MAX_TOKENS,
             output_config={"effort": EFFORT},
-            system=[{"type": "text", "text": SYSTEM, "cache_control": {"type": "ephemeral"}}],
+            system=[{"type": "text", "text": SYSTEM_WITH_NOTES, "cache_control": {"type": "ephemeral"}}],
             tools=[TOOL],
             tool_choice={"type": "auto"} if tools_left > 0 else {"type": "none"},
             messages=messages,

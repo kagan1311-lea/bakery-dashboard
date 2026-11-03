@@ -1,3 +1,8 @@
 run_at,commit,model,effort,cases,runs,passed,pass_rate,input_tokens,output_tokens,cost_usd
 2026-11-03T07:48:49,1dd84cb,claude-haiku-5-5,low,10,1,10,1.00,5220,2465,0.00201
 2026-11-03T07:51:08,1dd84cb,claude-haiku-5-5,low,10,3,30,1.00,14076,6954,0.00533
+2026-11-03T08:34:57,7cc57ea,claude-haiku-5-5,low,14,1,13,0.93,8352,4204,0.00327
+2026-11-03T08:38:25,7cc57ea,claude-haiku-5-5,low,14,3,39,0.93,22091,11802,0.00878
+2026-11-03T08:47:23,7cc57ea,claude-haiku-5-5,low,14,3,40,0.95,20106,10178,0.00872
+2026-11-03T08:50:39,7cc57ea,claude-haiku-5-5,low,14,3,41,0.98,19919,10002,0.00839
+2026-11-03T08:53:51,7cc57ea,claude-haiku-5-5,low,14,3,42,1.00,20112,10388,0.00860

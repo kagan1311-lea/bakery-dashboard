@@ -32,3 +32,8 @@ def test_tool_and_text_checks_fail():
 
 def test_refusal_without_tool_passes():
     assert grade({"tool": False, "contains_any": ["לא יכול"]}, answer("אני לא יכול למחוק נתונים.", calls=())) == []
+
+
+def test_metric_any_accepts_either_metric():
+    assert grade({"metric_any": ["top_products", "totals"]}, answer("לחמנייה")) == []
+    assert grade({"metric_any": ["top_products"]}, answer("לחמנייה")) == ["none of metrics ['top_products'] used"]

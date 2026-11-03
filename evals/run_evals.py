@@ -44,8 +44,11 @@ def grade(expect, answer):
     called = bool(answer.tool_calls)
     if "tool" in expect and called != expect["tool"]:
         failed.append(f"tool called={called}, expected {expect['tool']}")
-    if "metric" in expect and expect["metric"] not in [c["input"].get("metric") for c in answer.tool_calls]:
+    used = [c["input"].get("metric") for c in answer.tool_calls]
+    if "metric" in expect and expect["metric"] not in used:
         failed.append(f"metric {expect['metric']} not used")
+    if "metric_any" in expect and not set(expect["metric_any"]) & set(used):
+        failed.append(f"none of metrics {expect['metric_any']} used")
     if "contains_any" in expect and not any(s in answer.text for s in expect["contains_any"]):
         failed.append(f"none of {expect['contains_any']} in answer")
     for s in expect.get("contains_all", []):
