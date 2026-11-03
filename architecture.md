@@ -29,6 +29,19 @@ Read with [spec.md](spec.md). When the system changes, this file changes in the 
 
 The UI and the backend are one Streamlit process. There is no separate API, because one business with up to ten users does not need one.
 
+**The agent's five parts** (lesson 6: LLM + tools + memory + goal + loop), and where each lives:
+
+| Part | Here | File |
+|---|---|---|
+| LLM (brain) | `claude-haiku-5-5`, effort `low` | `agent.py` → `MODEL`, `EFFORT` |
+| Tools (hands) | `sales_query`: 4 fixed metrics, READ ONLY transaction | `agent.py` → `TOOL`, `run_tool` |
+| Memory: context | the question + tool results of this one question | `agent.py` → `ask` |
+| Memory: notebook | products, synonyms, how to search | `notes/products.md` |
+| Memory: the world | sales and weather (the system of record) | Postgres `sales`, `weather` |
+| Goal (job) | who it is, rules, refusals, "today" | `agent.py` → `SYSTEM` |
+| Loop (engine) | ask → run tool → feed back; max 3 tool calls | `agent.py` → `ask` |
+| Log | every question with tokens and cost | Postgres `agent_runs` |
+
 ## Flows
 
 **Dashboard load / date change**
@@ -132,4 +145,5 @@ Every query runs inside a `SET TRANSACTION READ ONLY` transaction, so Postgres i
 | 2026-11-03 | READ ONLY transaction for tool queries, not a separate Postgres role | Postgres enforces it per query, it needs no second secret on Railway, and a test proves a `DELETE` fails | The app gets other write paths, or more people get DB access |
 | 2026-11-03 | Spend cap $1/month, not $1/day; also set as the Anthropic workspace spend limit | The owner's budget; ~$0.0003 per question leaves room for thousands | Real usage shows the box closing early in the month |
 | 2026-11-03 | Effort `low` on Haiku 5.5 | Evals 30/30 at `low` (≈$0.0002 per question) | Eval pass rate drops below 80% |
+| 2026-11-03 | Manual tool-use loop in our code, not Managed Agents or the SDK Tool Runner (lesson 6, "four ways to build one") | One question, one read-only tool, no sandbox, no files or bash, no schedule, one client. The loop is ~40 lines, tested with a mocked model, and runs inside the Streamlit service we already host | Scheduled jobs, file/bash/web tools, or many clients each with their own keys and memory → Managed Agents |
 | 2026-11-03 | `TRUNCATE` + insert on load | Re-running never duplicates rows, and there is no natural unique key (one ticket has many rows) | Incremental daily loads |
