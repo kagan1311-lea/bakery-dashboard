@@ -10,6 +10,7 @@ from datetime import date
 from pathlib import Path
 
 import anthropic
+import psycopg2
 from psycopg2.extras import Json
 
 import db
@@ -18,12 +19,17 @@ MODEL = "claude-haiku-5-5"
 MAX_TOKENS = 1024
 EFFORT = "low"
 MAX_TOOL_CALLS = 3
+TIMEOUT_S = 20  # per model call; spec.md §4 targets an answer under 10 s
+MAX_RETRIES = 2
 RETENTION_DAYS = 90
 # USD per token (claude-haiku-5-5, prompts under 100K tokens)
 PRICE_INPUT = 0.10 / 1e6
 PRICE_OUTPUT = 0.50 / 1e6
 PRICE_CACHE_WRITE = PRICE_INPUT * 1.25
 PRICE_CACHE_READ = PRICE_INPUT * 0.1
+
+REFUSED = "אני לא יכול לענות על השאלה הזו."
+TOO_LONG = "התשובה יצאה ארוכה מדי. נסו לשאול שאלה ממוקדת יותר, למשל על מוצר אחד או תקופה קצרה."
 
 METRICS = ("totals", "top_products", "revenue_by_day", "product_sales")
 NOTES = Path(__file__).with_name("notes") / "products.md"
@@ -137,7 +143,7 @@ def run_tool(conn, args, first, last):
 
 def ask(question, conn, client=None):
     """Answer one question. Each question stands alone (no chat history)."""
-    client = client or anthropic.Anthropic()
+    client = client or anthropic.Anthropic(timeout=TIMEOUT_S, max_retries=MAX_RETRIES)
     first, last = read_only(conn, db.date_range)
     messages = [{
         "role": "user",
@@ -161,7 +167,10 @@ def ask(question, conn, client=None):
         answer.cost_usd += cost(response.usage)
 
         if response.stop_reason == "refusal":
-            answer.text = "אני לא יכול לענות על השאלה הזו."
+            answer.text = REFUSED
+            return answer
+        if response.stop_reason == "max_tokens":  # a cut answer, or a cut tool call: never show half
+            answer.text = TOO_LONG
             return answer
         if response.stop_reason != "tool_use":
             answer.text = "".join(b.text for b in response.content if b.type == "text").strip()
@@ -174,6 +183,9 @@ def ask(question, conn, client=None):
                 result, is_error = run_tool(conn, block.input, first, last), False
             except ValueError as e:
                 result, is_error = {"error": str(e)}, True
+            except psycopg2.Error as e:  # the model gets a chance to say the data isn't available now
+                conn.rollback()
+                result, is_error = {"error": f"database error ({type(e).__name__}); the data is not available right now"}, True
             answer.tool_calls.append({"input": block.input, "result": result})
             results.append({
                 "type": "tool_result",
