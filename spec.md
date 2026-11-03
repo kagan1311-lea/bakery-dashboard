@@ -1,6 +1,6 @@
 # Bakery Sales Dashboard + Ask Box — spec
 
-A one-page sales dashboard for a small bakery, with a small question box where Claude answers questions about the sales data. A small version of Lesson 9's Bakery Copilot: the dashboard's data, one agent tool, and a face on top.
+A one-page sales dashboard for a small bakery, with a small question box where Claude answers questions about the sales data.
 
 ## 1. Users
 
