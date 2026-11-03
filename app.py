@@ -72,6 +72,7 @@ def load(start, end):
 
 
 CHART_HEIGHT = 240
+CHART_COLOR = "#8B5A2B"  # warm brown, matches the background photo
 head_title, head_dates = st.columns([3, 2], vertical_alignment="bottom")
 head_title.title("מכירות מאפיית הכיכר")
 
@@ -99,7 +100,7 @@ chart_day, chart_top = st.columns(2)
 chart_day.markdown("##### הכנסות לפי יום")
 by_day = pd.DataFrame(data["by_day"], columns=["יום", "הכנסות"])
 chart_day.altair_chart(
-    alt.Chart(by_day).mark_line().encode(
+    alt.Chart(by_day).mark_line(color=CHART_COLOR).encode(
         x=alt.X("יום:T", title=None),
         y=alt.Y("הכנסות:Q", title="₪"),
         tooltip=[alt.Tooltip("יום:T", format="%d/%m/%Y"), alt.Tooltip("הכנסות:Q", format=",.0f")],
@@ -110,7 +111,7 @@ chart_day.altair_chart(
 chart_top.markdown("##### 10 המוצרים המובילים (יחידות)")
 top = pd.DataFrame(data["top"], columns=["מוצר", "יחידות"])
 chart_top.altair_chart(
-    alt.Chart(top).mark_bar().encode(
+    alt.Chart(top).mark_bar(color=CHART_COLOR).encode(
         x=alt.X("יחידות:Q", title=None),
         y=alt.Y("מוצר:N", sort="-x", title=None, axis=alt.Axis(labelOverlap=False, labelLimit=160)),
         tooltip=["מוצר", alt.Tooltip("יחידות:Q", format=",")],
