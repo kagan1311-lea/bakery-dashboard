@@ -66,7 +66,7 @@ The model **never writes SQL**. The tool takes fixed parameters, and the code bu
 |---|---|
 | `metric` | `top_products` · `revenue_by_day` · `totals` (revenue, transactions) · `product_sales` |
 | `start_date`, `end_date` | ISO dates, inside the data range |
-| `product` | only for `product_sales` |
+| `product` | only for `product_sales`; several matches also return a `total`, so the model never adds numbers itself |
 | `limit` | 1–20, default 10 |
 
 Every query runs inside a `SET TRANSACTION READ ONLY` transaction, so Postgres itself rejects any write. Even a bug cannot delete data (tested in `tests/test_agent.py`).
@@ -78,6 +78,7 @@ Every query runs inside a `SET TRANSACTION READ ONLY` transaction, so Postgres i
 - **max_tokens:** 512 per call. Answers are 2–4 sentences.
 - **System prompt:** cached (prompt caching), since it is identical on every call.
 - **History:** none. Each question stands alone (spec §3).
+- **Notebook:** `notes/products.md` (products, synonyms, plurals, how to search) is appended to the cached system prompt. Edit it when the product list changes.
 
 ## Limits
 

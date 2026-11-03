@@ -95,6 +95,20 @@ def test_product_sales_matches_part_of_the_name(sales):
     assert result["products"] == [{"product": "בבקה שוקולד", "units": 1, "revenue": 42}]
 
 
+def test_product_notes_are_in_the_system_prompt(sales):
+    client = FakeClient(text("שלום"))
+    agent.ask("כמה חלות?", sales, client)
+    system = client.requests[0]["system"][0]["text"]
+    assert "| לחמים | חלה | חלות |" in system and system.startswith(agent.SYSTEM)
+
+
+def test_product_sales_adds_a_total_when_several_match(sales):
+    result = agent.run_tool(sales, {"metric": "product_sales", "start_date": str(START), "end_date": str(END),
+                                    "product": "ח"}, START, END)
+    assert [p["product"] for p in result["products"]] == ["לחמנייה", "חלה"]
+    assert result["total"] == {"units": 12, "revenue": 76}  # לחמנייה 10 / ₪40 + חלה 2 net / ₪36
+
+
 def test_tool_queries_cannot_write(sales):
     def delete_everything(conn):
         with conn.cursor() as cur:
