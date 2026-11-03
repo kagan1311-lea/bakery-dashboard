@@ -2,8 +2,6 @@
 
 A one-page sales dashboard for a small bakery (Streamlit + Postgres on Railway) with a small "ask a question" box powered by Claude. Data: mock transactions with Hebrew product names, built by `mock_data.py` from Kaggle's daily bakery revenue and weather files (`data/raw/`).
 
-Built as a Lesson 9 (Agentic Engineering) exercise: design → place → manage → test/eval.
-
 ## Read first
 
 | File | Part | What it holds |
