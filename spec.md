@@ -76,3 +76,21 @@ A one-page sales dashboard for a small bakery, with a small question box where C
 12. "What's the weather?" → no tool call; the agent says it only answers questions about the bakery's sales.
 13. Question 21 in the same hour is refused with a message; nothing is sent to the model.
 14. When the month's spend passes $1, the box is disabled with a message; nothing is sent to the model.
+
+## 8. Look
+
+Same look on a computer and on a phone; new features reuse it instead of inventing new colors or styles.
+
+- **Name:** "מכירות מאפיית הכיכר" — page title and browser tab. No icon next to the title.
+- **Language / direction:** Hebrew, right-to-left, right-aligned.
+- **Background:** the bakery photo (`assets/bakery-bg.jpg`, Tabitha Turner on Unsplash), under a light cream layer (`rgba(255, 252, 247, 0.82)`) so text stays readable; fixed while scrolling. Credit line at the bottom of the page: "תמונת רקע: Tabitha Turner, Unsplash".
+- **Cards, charts, ask box:** white, slightly see-through (`rgba(255, 255, 255, 0.85)`), rounded corners (12px).
+- **Chart color:** warm brown `#8B5A2B` (`CHART_COLOR` in `app.py`) for the revenue line and the product bars — no blue.
+- **Ask button:** says "אישור".
+- **Layout, computer:** title and date filter on one row → three cards in a row → the two charts side by side (240px high) → the ask box. The whole page fits on one 1440×900 screen.
+- **Layout, phone (≤ 640px):** same colors and background; the three cards stay in one compact row; the charts stack; smaller title on one line; no horizontal scroll.
+
+**Done when**
+15. On a 1440×900 screen everything from the title to the ask box is visible without scrolling.
+16. On a 375px-wide phone there is no horizontal scroll and the three cards sit in one row.
+17. Both charts are brown (`#8B5A2B`), and the ask button says "אישור".
