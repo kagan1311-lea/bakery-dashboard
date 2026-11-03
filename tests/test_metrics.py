@@ -53,6 +53,13 @@ def test_date_range(sales):
     assert db.date_range(sales) == (START, END)
 
 
+def test_range_includes_only_its_days(sales):
+    t = db.totals(sales, END, END)
+    assert t["revenue"] == 42 and t["transactions"] == 2 and t["best_seller"] == "בבקה שוקולד"
+    assert db.revenue_by_day(sales, END, END) == [(END, 42.0)]
+    assert db.top_products(sales, START, START) == [("לחמנייה", 10), ("חלה", 2)]
+
+
 def run_app(monkeypatch, url):
     monkeypatch.setenv("DATABASE_URL", url)
     st.cache_data.clear()
@@ -64,6 +71,19 @@ def test_page_shows_three_cards(sales, schema_url, monkeypatch):
     assert not at.exception
     assert [m.label for m in at.metric] == ["סך ההכנסות", "מספר עסקאות", "המוצר הנמכר ביותר"]
     assert at.metric[2].value == "לחמנייה"
+
+
+def test_date_filter_defaults_to_full_range(sales, schema_url, monkeypatch):
+    at = run_app(monkeypatch, schema_url)
+    assert at.date_input[0].value == (START, END)
+    assert at.metric[0].value == "₪118"
+
+
+def test_date_filter_narrows_the_cards(sales, schema_url, monkeypatch):
+    at = run_app(monkeypatch, schema_url)
+    at.date_input[0].set_value((END, END)).run()
+    assert not at.exception
+    assert [m.value for m in at.metric] == ["₪42", "2", "בבקה שוקולד"]
 
 
 def test_page_shows_error_when_db_unreachable(monkeypatch):

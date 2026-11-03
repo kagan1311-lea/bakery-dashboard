@@ -19,14 +19,20 @@ st.markdown(
 )
 
 
-@st.cache_data(ttl=600, show_spinner="טוען נתונים…")
-def load():
+@st.cache_data(ttl=600, show_spinner=False)
+def data_range():
     conn = db.connect()
     try:
-        start, end = db.date_range(conn)
+        return db.date_range(conn)
+    finally:
+        conn.close()
+
+
+@st.cache_data(ttl=600, show_spinner="טוען נתונים…")
+def load(start, end):
+    conn = db.connect()
+    try:
         return {
-            "start": start,
-            "end": end,
             "totals": db.totals(conn, start, end),
             "by_day": db.revenue_by_day(conn, start, end),
             "top": db.top_products(conn, start, end),
@@ -38,16 +44,18 @@ def load():
 st.title("🥐 מכירות המאפייה")
 
 try:
-    data = load()
+    first, last = data_range()
+    if first is None:
+        st.info("אין עדיין נתוני מכירות. הריצו את load_data.py.")
+        st.stop()
+    picked = st.date_input(
+        "טווח תאריכים", value=(first, last), min_value=first, max_value=last, format="DD/MM/YYYY"
+    )
+    start, end = (picked[0], picked[-1]) if picked else (first, last)  # one date picked = one day
+    data = load(start, end)
 except (psycopg2.Error, KeyError) as e:
     st.error(f"אין חיבור למסד הנתונים. נסו שוב בעוד דקה. ({type(e).__name__})")
     st.stop()
-
-if data["start"] is None:
-    st.info("אין עדיין נתוני מכירות. הריצו את load_data.py.")
-    st.stop()
-
-st.caption(f"{data['start']:%d/%m/%Y} – {data['end']:%d/%m/%Y}")
 
 totals = data["totals"]
 c1, c2, c3 = st.columns(3)
