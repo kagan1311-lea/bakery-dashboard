@@ -111,7 +111,9 @@ It runs with a Postgres role that has `SELECT` only. Even a bug cannot delete da
 
 `.env` is in `.gitignore`. `.env.example` lists these names with no values.
 
-**Check:** `git log -p | grep -E "sk-ant|postgresql://.*:.*@"` must come back empty.
+**Check:** `git log -p | grep -E "sk-ant|rlwy\.net"` must come back empty. The only connection string in the repo is CI's throwaway `postgres:postgres@localhost` container.
+
+**CI** (`.github/workflows/ci.yml`) needs no secrets: Postgres is a service container and the model is mocked.
 
 ## Decisions
 
