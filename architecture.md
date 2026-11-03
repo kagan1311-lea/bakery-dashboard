@@ -50,7 +50,7 @@ The UI and the backend are one Streamlit process. There is no separate API, beca
 3. Streamlit draws the cards and charts.
 
 **Ask a question**
-1. The user types a question. `agent.py` checks the length (≤ 500), the session's count this hour (≤ 20) and this month's spend from `agent_runs` (≤ $1). If any check fails, it returns a message and does not call the model.
+1. The user types a question. `limits.py` checks the length (≤ 500), the session's count this hour (≤ 20) and this month's spend from `agent_runs` (≤ $1). If any check fails, it returns a message and does not call the model.
 2. Call Claude with the system prompt and the `sales_query` tool. The system prompt says that "today" is `MAX(sold_at)`.
 3. If Claude asks for `sales_query`: validate the arguments, run a parameterised query, and send the rows back. One more call to Claude produces the answer. Max **3 tool calls** per question.
 4. Save to `agent_runs` the question, the tool calls, the answer, the tokens and the cost. Show the answer.
@@ -98,9 +98,9 @@ Every query runs inside a `SET TRANSACTION READ ONLY` transaction, so Postgres i
 
 | Layer | Owner | Number |
 |---|---|---|
-| Users → us | `agent.py` | 20 questions / session / hour · 500 chars / question |
+| Users → us | `limits.py` | 20 questions / session / hour · 500 chars / question |
 | Us → Anthropic | Anthropic SDK | Built-in retry with backoff on 429/5xx (max 2 retries). Then "try again in a minute". |
-| Our wallet | `agent.py` + `agent_runs` | **$1 / month**, then the box is disabled until the 1st (Asia/Jerusalem) |
+| Our wallet | `limits.py` + `agent_runs` | **$1 / month**, then the box is disabled until the 1st (Asia/Jerusalem) |
 | Our wallet, hard stop | Anthropic Console | Workspace `bakery-dashboard` spend limit; the API key lives in that workspace |
 | Agent loop | `agent.py` | Max 3 tool calls per question · 20 s timeout per model call, 2 retries · a cut answer (`max_tokens`) is replaced by a clear message · a DB error inside the tool goes back to the model as `is_error` |
 | Page | `app.py` | Timeout, API, DB and unexpected errors each show a short Hebrew message and are logged (`bakery.ask` logger → Railway logs); the dashboard above keeps working |
