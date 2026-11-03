@@ -19,7 +19,7 @@ import agent
 import db
 
 load_dotenv(".env")
-st.set_page_config(page_title="מכירות המאפייה", page_icon="🥐", layout="wide")
+st.set_page_config(page_title="מכירות מאפיית הכיכר", page_icon="🥐", layout="wide")
 BACKGROUND = base64.b64encode((Path(__file__).parent / "assets" / "bakery-bg.jpg").read_bytes()).decode()
 st.markdown(
     f"""<style>
@@ -59,7 +59,7 @@ def load(start, end):
         conn.close()
 
 
-st.title("🥐 מכירות המאפייה")
+st.title("מכירות מאפיית הכיכר")
 
 try:
     first, last = data_range()
