@@ -29,6 +29,11 @@ st.markdown(
                     url("data:image/jpeg;base64,{BACKGROUND}") center / cover fixed;
     }}
     [data-testid='stHeader'] {{ background: transparent; }}
+    .block-container {{ padding-top: 2.5rem; }}
+    @media (max-width: 640px) {{
+        .block-container {{ padding: 2rem 1rem 1rem; }}
+        h1 {{ font-size: 1.8rem !important; }}
+    }}
     [data-testid='stMetric'], [data-testid='stForm'], [data-testid='stVegaLiteChart'] {{
         background: rgba(255, 255, 255, 0.85); border-radius: 12px; padding: 12px 16px;
     }}
