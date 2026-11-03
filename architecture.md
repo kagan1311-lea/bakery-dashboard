@@ -15,9 +15,9 @@ Read with [spec.md](spec.md). When the system changes, this file changes in the 
  ┌────────────▼─────────────────────────────────────┴───────────────┐
  │ LAYER 2 · BACKEND (Python, same Streamlit process)               │
  │ db.py: dashboard queries  ·  agent.py: agent loop, rate limit,   │
- │ daily cap, logging to agent_runs                                 │
+ │ monthly cap, logging to agent_runs                               │
  └────────────┬─────────────────────────────┬───────────────────────┘
-              │ read                        │ read-only role
+              │ read                        │ READ ONLY transaction
  ┌────────────▼─────────────┐     ┌─────────▼──────────────────────┐
  │ LAYER 3 · DATABASE       │◄────┤ LAYER 4 · TOOLS                │
  │ Postgres                 │     │ sales_query (read)             │
@@ -37,7 +37,7 @@ The UI and the backend are one Streamlit process. There is no separate API, beca
 3. Streamlit draws the cards and charts.
 
 **Ask a question**
-1. The user types a question. `agent.py` checks the length (≤ 500), the session's count this hour (≤ 20) and today's spend from `agent_runs` (≤ $1). If any check fails, it returns a message and does not call the model.
+1. The user types a question. `agent.py` checks the length (≤ 500), the session's count this hour (≤ 20) and this month's spend from `agent_runs` (≤ $1). If any check fails, it returns a message and does not call the model.
 2. Call Claude with the system prompt and the `sales_query` tool. The system prompt says that "today" is `MAX(sold_at)`.
 3. If Claude asks for `sales_query`: validate the arguments, run a parameterised query, and send the rows back. One more call to Claude produces the answer. Max **3 tool calls** per question.
 4. Save to `agent_runs` the question, the tool calls, the answer, the tokens and the cost. Show the answer.
@@ -69,12 +69,12 @@ The model **never writes SQL**. The tool takes fixed parameters, and the code bu
 | `product` | only for `product_sales` |
 | `limit` | 1–20, default 10 |
 
-It runs with a Postgres role that has `SELECT` only. Even a bug cannot delete data.
+Every query runs inside a `SET TRANSACTION READ ONLY` transaction, so Postgres itself rejects any write. Even a bug cannot delete data (tested in `tests/test_agent.py`).
 
 ## Model
 
 - **Model:** `claude-haiku-5-5`. One simple tool and short answers, so the cheapest current model is enough. Revisit if eval pass rate < 80%.
-- **Effort:** default, no extended thinking. The task is lookup-and-summarise, not reasoning.
+- **Effort:** `low` (adaptive thinking stays on, as on every Haiku 5.5 call). The task is lookup-and-summarise, not reasoning; the evals pass at 100% at this level.
 - **max_tokens:** 512 per call. Answers are 2–4 sentences.
 - **System prompt:** cached (prompt caching), since it is identical on every call.
 - **History:** none. Each question stands alone (spec §3).
@@ -85,7 +85,8 @@ It runs with a Postgres role that has `SELECT` only. Even a bug cannot delete da
 |---|---|---|
 | Users → us | `agent.py` | 20 questions / session / hour · 500 chars / question |
 | Us → Anthropic | Anthropic SDK | Built-in retry with backoff on 429/5xx (max 2 retries). Then "try again in a minute". |
-| Our wallet | `agent.py` + `agent_runs` | **$1 / day**, then the box is disabled until midnight (Asia/Jerusalem) |
+| Our wallet | `agent.py` + `agent_runs` | **$1 / month**, then the box is disabled until the 1st (Asia/Jerusalem) |
+| Our wallet, hard stop | Anthropic Console | Workspace `bakery-dashboard` spend limit; the API key lives in that workspace |
 | Agent loop | `agent.py` | Max 3 tool calls per question |
 
 ## Hosting (Part 2 — planned)
@@ -99,13 +100,13 @@ It runs with a Postgres role that has `SELECT` only. Even a bug cannot delete da
 
 **Start command:** `streamlit run app.py --server.port $PORT --server.address 0.0.0.0`
 
-**Rough cost:** hosting is a few dollars a month (Railway plan). The model costs about 100 calls/day × ~1.5k tokens, which is cents per day and well under the $1 cap.
+**Rough cost:** hosting is a few dollars a month (Railway plan). The model costs about 100 calls/day × ~1.5k tokens, about $0.0002–0.0005 per question: thousands of questions fit under the $1/month cap.
 
 ## Secrets
 
 | Name | Used by | Local | Railway |
 |---|---|---|---|
-| `DATABASE_URL` | app (dashboard + agent, read-only role) | `.env` | Variables (Postgres plugin reference; use the *internal* URL) |
+| `DATABASE_URL` | app (dashboard + agent; tool queries in READ ONLY transactions) | `.env` | Variables (Postgres plugin reference; use the *internal* URL) |
 | `DATABASE_ADMIN_URL` | `load_data.py` only (needs write) | `.env` (Railway's *public* URL) | not set — the service never writes `sales` |
 | `ANTHROPIC_API_KEY` | `agent.py` | `.env` | Variables |
 
@@ -120,7 +121,7 @@ It runs with a Postgres role that has `SELECT` only. Even a bug cannot delete da
 | Date | Choice | Reason | What would change it |
 |---|---|---|---|
 | 2026-11-03 | Streamlit over HTML/JS + API | One Python file gives cards, charts and an input box, with no frontend build. Up to 10 users fits one process | Real login, or more than ~50 users at once |
-| 2026-11-03 | Postgres over CSV in the repo / SQLite | Railway gives it in one click, it survives redeploys, and the agent's read-only role is native | Data stays tiny and the agent is dropped |
+| 2026-11-03 | Postgres over CSV in the repo / SQLite | Railway gives it in one click, it survives redeploys, and READ ONLY transactions are native | Data stays tiny and the agent is dropped |
 | 2026-11-03 | Fixed-parameter tool over free SQL | The "delete all data" case can't happen by design, answers are testable, and evals are deterministic on tool args | Questions the 4 metrics can't answer show up in evals |
 | 2026-11-03 | `claude-haiku-5-5` | Cheapest, fast enough for < 10 s, and the job is simple | Eval pass rate < 80% → try Sonnet and compare cost |
 | 2026-11-03 | "Today" = `MAX(sold_at)` | The dataset is historical, so calendar "last week" is always empty | Live data starts flowing in |
@@ -128,4 +129,7 @@ It runs with a Postgres role that has `SELECT` only. Even a bug cannot delete da
 | 2026-11-03 | Hebrew product names, prices in ₪ | The users are an Israeli bakery's staff | — |
 | 2026-11-03 | Shift dates +417 weeks; keep the last 2 years | Data ends close to "now" with weekdays and seasons kept; ~165k rows fits a small DB | — |
 | 2026-11-03 | Generated CSVs not committed (`.gitignore`); `data/raw/` committed | The output is reproducible from the seed, so 12 MB would be noise in Git | Generation stops being deterministic |
+| 2026-11-03 | READ ONLY transaction for tool queries, not a separate Postgres role | Postgres enforces it per query, it needs no second secret on Railway, and a test proves a `DELETE` fails | The app gets other write paths, or more people get DB access |
+| 2026-11-03 | Spend cap $1/month, not $1/day; also set as the Anthropic workspace spend limit | The owner's budget; ~$0.0003 per question leaves room for thousands | Real usage shows the box closing early in the month |
+| 2026-11-03 | Effort `low` on Haiku 5.5 | Evals 30/30 at `low` (≈$0.0002 per question) | Eval pass rate drops below 80% |
 | 2026-11-03 | `TRUNCATE` + insert on load | Re-running never duplicates rows, and there is no natural unique key (one ticket has many rows) | Incremental daily loads |

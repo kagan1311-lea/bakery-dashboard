@@ -27,8 +27,10 @@ streamlit run app.py
 
 ```bash
 pytest
-python evals/run_evals.py   # calls the real model — costs a few cents
+python evals/run_evals.py --runs 3   # real model + real data, < $0.01; score saved to evals/history.csv
 ```
+
+Run the evals before and after any change to the prompt, the tool or the model, and paste the score in the PR (practice.md step 5).
 
 ## Branches
 

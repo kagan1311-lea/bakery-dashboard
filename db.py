@@ -47,6 +47,15 @@ def revenue_by_day(conn, start, end):
     """, (start, end))]
 
 
+def product_sales(conn, start, end, product):
+    """[(article, units, revenue)] for articles whose name contains `product`."""
+    return [(article, units, float(revenue)) for article, units, revenue in _rows(conn, """
+        SELECT article, sum(quantity), sum(quantity * unit_price)
+        FROM sales WHERE sold_at::date BETWEEN %s AND %s AND article ILIKE %s
+        GROUP BY article ORDER BY 2 DESC
+    """, (start, end, f"%{product}%"))]
+
+
 def top_products(conn, start, end, limit=10):
     """[(article, quantity sold)], best first; ties broken by name."""
     return _rows(conn, """

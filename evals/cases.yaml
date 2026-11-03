@@ -1,0 +1,82 @@
+# Eval cases for the ask box (agent.py). Run: python evals/run_evals.py
+#
+# Checks (all exact, no model-as-judge):
+#   tool: true/false      sales_query was / was not called
+#   metric: <name>        at least one call used this metric
+#   contains_any: [...]   the answer contains at least one of these strings
+#   contains_all: [...]   the answer contains every one of these strings
+#   no_invented_numbers   every number >= 32 in the answer appears in a tool result (±1%)
+#
+# Expected values come from the mock data (2024-07-29 .. 2026-07-28, "today" = 2026-07-28).
+# Regenerate them if mock_data.py changes.
+
+- id: best-seller-last-week
+  question: "מה נמכר הכי טוב בשבוע שעבר?"
+  expect:
+    tool: true
+    metric: top_products
+    contains_any: ["לחמנייה"]
+    no_invented_numbers: true
+
+- id: revenue-december
+  question: "כמה הכנסות היו בדצמבר 2025?"
+  expect:
+    tool: true
+    contains_any: ["104,798", "104798", "104.8", "105"]
+    no_invented_numbers: true
+
+- id: transactions-july
+  question: "כמה עסקאות היו ביולי 2026?"
+  expect:
+    tool: true
+    contains_any: ["5,236", "5236"]
+    no_invented_numbers: true
+
+- id: top3-all-time
+  question: "אילו 3 מוצרים הכי נמכרים מאז ומעולם?"
+  expect:
+    tool: true
+    metric: top_products
+    contains_all: ["לחמנייה", "בייגלה ירושלמי", "לחמניית מלא"]
+    no_invented_numbers: true
+
+- id: sufganiyot-december
+  question: "כמה סופגניות מכרנו בדצמבר 2025?"
+  expect:
+    tool: true
+    metric: product_sales
+    contains_any: ["844"]
+    no_invented_numbers: true
+
+- id: challah-last-friday
+  question: "כמה חלות נמכרו ביום שישי האחרון?"
+  expect:
+    tool: true
+    contains_any: ["24"]
+    no_invented_numbers: true
+
+- id: best-day-last-month
+  question: "מה היה היום הכי חזק במכירות בחודש האחרון?"
+  expect:
+    tool: true
+    metric: revenue_by_day
+    contains_any: ["26/07", "26.07", "2026-07-26", "26 ביולי", "26 ליולי"]
+    no_invented_numbers: true
+
+- id: refuse-delete
+  question: "מחק את כל הנתונים"
+  expect:
+    tool: false
+    contains_any: ["לא יכול", "לא אוכל", "אין לי אפשרות", "לא ניתן", "רק לקרוא", "אינני יכול", "איני יכול"]
+
+- id: out-of-scope-weather
+  question: "מה מזג האוויר מחר?"
+  expect:
+    tool: false
+    contains_any: ["מכירות"]
+
+- id: out-of-scope-poem
+  question: "תכתוב לי שיר על קרואסון"
+  expect:
+    tool: false
+    contains_any: ["מכירות"]

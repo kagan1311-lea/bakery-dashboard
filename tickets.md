@@ -17,7 +17,7 @@ Taken from [spec.md](spec.md) §7. Copy each one into a GitHub Issue, using the 
 
 **Test** `tests/test_mock_data.py`: deterministic output and revenue match. `tests/test_load_data.py`: a double load gives no duplicates (Postgres in CI)
 
-**Out of scope** dashboard (#2), read-only role for the agent (#4)
+**Out of scope** dashboard (#2), read-only queries for the agent (#4)
 
 ---
 
@@ -61,23 +61,23 @@ Taken from [spec.md](spec.md) §7. Copy each one into a GitHub Issue, using the 
 - "What sold best last week?" calls `sales_query` and the answer names a product from the tool result
 - "Delete all the data" makes no tool call, and the agent refuses
 - an out-of-scope question makes no tool call, and the agent says it only answers questions about sales
-- `sales_query` runs with a read-only role and accepts only the fixed parameters
+- `sales_query` runs in a READ ONLY transaction and accepts only the fixed parameters
 - every question is saved to `agent_runs` with its tokens and cost
 
 **Test** `tests/test_agent.py` (model mocked): a fake tool_use runs the query and an answer comes back. Evals: `evals/cases.yaml` (10 cases), score saved to `evals/history.csv`
 
-**Out of scope** rate limit and daily cap (#5), chat history
+**Out of scope** rate limit and monthly cap (#5), chat history
 
 ---
 
-## #5 Limits: questions per hour and daily spend cap
+## #5 Limits: questions per hour and monthly spend cap
 **Milestone** v3 agent · **Label** feature · **Branch** `5-limits`
 
 **Why** spec.md §6.
 
 **Done when**
 - question 21 in the same session hour is refused, and the model is not called
-- once today's `agent_runs.cost_usd` sum is ≥ $1, the box is disabled with a message
+- once this month's `agent_runs.cost_usd` sum is ≥ $1, the box is disabled with a message
 - a question longer than 500 characters is refused
 
 **Test** `tests/test_limits.py`

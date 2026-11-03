@@ -13,6 +13,20 @@ CREATE TABLE IF NOT EXISTS sales (
 
 CREATE INDEX IF NOT EXISTS sales_sold_at_idx ON sales (sold_at);
 
+CREATE TABLE IF NOT EXISTS agent_runs (
+    id            serial PRIMARY KEY,
+    asked_at      timestamptz   NOT NULL DEFAULT now(),
+    session_id    text          NOT NULL,
+    question      text          NOT NULL,
+    tool_calls    jsonb         NOT NULL,
+    answer        text          NOT NULL,
+    input_tokens  integer       NOT NULL,
+    output_tokens integer       NOT NULL,
+    cost_usd      numeric(8, 5) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS agent_runs_asked_at_idx ON agent_runs (asked_at);
+
 CREATE TABLE IF NOT EXISTS weather (
     date          date PRIMARY KEY,
     cloud_cover   integer,
