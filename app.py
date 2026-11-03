@@ -3,8 +3,10 @@
 Run: streamlit run app.py   (needs DATABASE_URL and ANTHROPIC_API_KEY, see .env.example)
 """
 
+import base64
 import os
 import uuid
+from pathlib import Path
 
 import altair as alt
 import anthropic
@@ -18,8 +20,19 @@ import db
 
 load_dotenv(".env")
 st.set_page_config(page_title="מכירות המאפייה", page_icon="🥐", layout="wide")
+BACKGROUND = base64.b64encode((Path(__file__).parent / "assets" / "bakery-bg.jpg").read_bytes()).decode()
 st.markdown(
-    "<style>.stApp, [data-testid='stMetric'] { direction: rtl; text-align: right; }</style>",
+    f"""<style>
+    .stApp, [data-testid='stMetric'] {{ direction: rtl; text-align: right; }}
+    .stApp {{
+        background: linear-gradient(rgba(255, 252, 247, 0.82), rgba(255, 252, 247, 0.82)),
+                    url("data:image/jpeg;base64,{BACKGROUND}") center / cover fixed;
+    }}
+    [data-testid='stHeader'] {{ background: transparent; }}
+    [data-testid='stMetric'], [data-testid='stForm'], [data-testid='stVegaLiteChart'] {{
+        background: rgba(255, 255, 255, 0.85); border-radius: 12px; padding: 12px 16px;
+    }}
+    </style>""",
     unsafe_allow_html=True,
 )
 
@@ -98,7 +111,7 @@ if not os.environ.get("ANTHROPIC_API_KEY"):
 session_id = st.session_state.setdefault("session_id", uuid.uuid4().hex)
 with st.form("ask"):
     question = st.text_input("שאלה", placeholder="למשל: מה נמכר הכי טוב בשבוע שעבר?", max_chars=500)
-    asked = st.form_submit_button("שאלו")
+    asked = st.form_submit_button("אישור")
 
 if asked and question.strip():
     with st.spinner("בודק בנתונים…"):
@@ -116,3 +129,5 @@ if asked and question.strip():
 
 if last := st.session_state.get("last_answer"):
     st.markdown(last.text or "לא התקבלה תשובה.")
+
+st.caption("תמונת רקע: Tabitha Turner, Unsplash")
