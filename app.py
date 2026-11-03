@@ -1,14 +1,19 @@
-"""Bakery sales dashboard: three cards, revenue per day, top 10 products.
+"""Bakery sales dashboard: three cards, revenue per day, top 10 products, and an ask box.
 
-Run: streamlit run app.py   (needs DATABASE_URL, see .env.example)
+Run: streamlit run app.py   (needs DATABASE_URL and ANTHROPIC_API_KEY, see .env.example)
 """
 
+import os
+import uuid
+
 import altair as alt
+import anthropic
 import pandas as pd
 import psycopg2
 import streamlit as st
 from dotenv import load_dotenv
 
+import agent
 import db
 
 load_dotenv(".env")
@@ -84,3 +89,30 @@ st.altair_chart(
     ),
     use_container_width=True,
 )
+
+st.subheader("💬 שאלו על המכירות")
+if not os.environ.get("ANTHROPIC_API_KEY"):
+    st.info("תיבת השאלות לא מוגדרת (חסר ANTHROPIC_API_KEY).")
+    st.stop()
+
+session_id = st.session_state.setdefault("session_id", uuid.uuid4().hex)
+with st.form("ask"):
+    question = st.text_input("שאלה", placeholder="למשל: מה נמכר הכי טוב בשבוע שעבר?", max_chars=500)
+    asked = st.form_submit_button("שאלו")
+
+if asked and question.strip():
+    with st.spinner("בודק בנתונים…"):
+        conn = db.connect()
+        try:
+            answer = agent.ask(question.strip(), conn)
+            agent.log_run(conn, session_id, question.strip(), answer)
+        except anthropic.APIError as e:
+            answer = None
+            st.error(f"העוזר לא זמין כרגע. נסו שוב בעוד דקה. ({type(e).__name__})")
+        finally:
+            conn.close()
+    if answer:
+        st.session_state["last_answer"] = answer
+
+if last := st.session_state.get("last_answer"):
+    st.markdown(last.text or "לא התקבלה תשובה.")

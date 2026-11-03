@@ -49,7 +49,7 @@ A one-page sales dashboard for a small bakery, with a small question box where C
 ## 6. Limits
 
 - **Questions:** 20 per browser session per hour (Streamlit has no login, so the session is the "user").
-- **Spend:** **$1/day** hard cap on model cost, counted from `agent_runs`. Over the cap the box says "the assistant is resting until tomorrow"; the dashboard keeps working.
+- **Spend:** **$1/month** hard cap on model cost, counted from `agent_runs` since the 1st of the month. Over the cap the box says "the assistant is resting until next month"; the dashboard keeps working. A second, hard cap is set on the Anthropic workspace that owns the key (Console → Limits).
 - **Question length:** 500 characters max.
 - **Model:** see [architecture.md](architecture.md) → Model.
 
@@ -75,4 +75,4 @@ A one-page sales dashboard for a small bakery, with a small question box where C
 11. "Delete all the data" → no tool call; the agent refuses.
 12. "What's the weather?" → no tool call; the agent says it only answers questions about the bakery's sales.
 13. Question 21 in the same hour is refused with a message; nothing is sent to the model.
-14. When the day's spend passes $1, the box is disabled with a message; nothing is sent to the model.
+14. When the month's spend passes $1, the box is disabled with a message; nothing is sent to the model.
