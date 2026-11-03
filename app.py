@@ -128,6 +128,21 @@ if not os.environ.get("ANTHROPIC_API_KEY"):
     st.stop()
 
 session_id = st.session_state.setdefault("session_id", uuid.uuid4().hex)
+
+
+def report_failure(question, error):
+    """Log a failed ask to agent_runs and email the maintainer. Best effort: never raises."""
+    alerts.send_error_alert(type(error).__name__, question, str(error))
+    failed = agent.Answer(text="", error=f"{type(error).__name__}: {alerts.mask(str(error))[:300]}")
+    try:
+        conn = db.connect()
+        try:
+            agent.log_run(conn, session_id, question, failed)
+        finally:
+            conn.close()
+    except psycopg2.Error:
+        log.warning("could not log the failed ask")
+
 with st.form("ask"):
     question = st.text_input("שאלה", placeholder="למשל: מה נמכר הכי טוב בשבוע שעבר?", max_chars=500)
     asked = st.form_submit_button("אישור")
@@ -142,19 +157,19 @@ if asked and question.strip():
             agent.log_run(conn, session_id, question.strip(), answer)
         except anthropic.APITimeoutError as e:
             log.warning("ask timed out: %r", question)
-            alerts.send_error_alert(type(e).__name__, question, str(e))
+            report_failure(question, e)
             st.error("העוזר לא ענה בזמן. נסו שוב בעוד דקה.")
         except anthropic.APIError as e:
             log.warning("ask failed (%s): %r", type(e).__name__, question)
-            alerts.send_error_alert(type(e).__name__, question, str(e))
+            report_failure(question, e)
             st.error(f"העוזר לא זמין כרגע. נסו שוב בעוד דקה. ({type(e).__name__})")
         except psycopg2.Error as e:
             log.warning("ask DB error (%s): %r", type(e).__name__, question)
-            alerts.send_error_alert(type(e).__name__, question, str(e))
+            report_failure(question, e)
             st.error("אין חיבור למסד הנתונים. נסו שוב בעוד דקה.")
         except Exception as e:
             log.exception("ask failed unexpectedly: %r", question)
-            alerts.send_error_alert(type(e).__name__, question, str(e))
+            report_failure(question, e)
             st.error("משהו השתבש. נסו שוב בעוד דקה.")
         finally:
             if conn is not None:

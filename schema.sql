@@ -27,6 +27,12 @@ CREATE TABLE IF NOT EXISTS agent_runs (
 
 CREATE INDEX IF NOT EXISTS agent_runs_asked_at_idx ON agent_runs (asked_at);
 
+-- #16 run logs (added later; ADD COLUMN IF NOT EXISTS keeps this safe to run again)
+ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS latency_ms     integer;
+ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS tool_errors    integer NOT NULL DEFAULT 0;
+ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS error          text;     -- set when the ask failed
+ALTER TABLE agent_runs ADD COLUMN IF NOT EXISTS prompt_version text;
+
 CREATE TABLE IF NOT EXISTS weather (
     date          date PRIMARY KEY,
     cloud_cover   integer,

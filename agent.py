@@ -5,6 +5,7 @@ parameterised query inside a READ ONLY transaction. See architecture.md → Tool
 """
 
 import json
+import time
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -16,6 +17,10 @@ from psycopg2.extras import Json
 import db
 
 MODEL = "claude-haiku-5-5"
+# Bump on every change to SYSTEM, notes/products.md, TOOL, MODEL or EFFORT; logged with every run
+# and every eval, so a wrong answer can be traced to the prompt that gave it.
+# v1 #4 first agent · v2 #13 product notes + totals · v3 #14 when unsure, tone, done line
+PROMPT_VERSION = "v3"
 MAX_TOKENS = 1024
 EFFORT = "low"
 MAX_TOOL_CALLS = 3
@@ -85,6 +90,9 @@ class Answer:
     input_tokens: int = 0
     output_tokens: int = 0
     cost_usd: float = 0.0
+    latency_ms: int = 0
+    tool_errors: int = 0
+    error: str | None = None  # set when the ask failed (see app.py)
 
 
 def cost(usage):
@@ -150,6 +158,15 @@ def ask(question, conn, client=None):
         "content": f"[Data covers {first} to {last}. Today is {last}.]\n\n{question}",
     }]
     answer = Answer(text="")
+    started = time.perf_counter()
+    try:
+        return _loop(client, conn, messages, answer, first, last)
+    finally:
+        answer.latency_ms = round((time.perf_counter() - started) * 1000)
+
+
+def _loop(client, conn, messages, answer, first, last):
+    """The agent loop: ask the model, run the tool it asks for, feed the result back."""
 
     while True:
         tools_left = MAX_TOOL_CALLS - len(answer.tool_calls)
@@ -186,6 +203,7 @@ def ask(question, conn, client=None):
             except psycopg2.Error as e:  # the model gets a chance to say the data isn't available now
                 conn.rollback()
                 result, is_error = {"error": f"database error ({type(e).__name__}); the data is not available right now"}, True
+            answer.tool_errors += is_error
             answer.tool_calls.append({"input": block.input, "result": result})
             results.append({
                 "type": "tool_result",
@@ -200,9 +218,10 @@ def log_run(conn, session_id, question, answer):
     """Save the question to agent_runs and drop runs older than RETENTION_DAYS."""
     with conn, conn.cursor() as cur:
         cur.execute(
-            "INSERT INTO agent_runs (session_id, question, tool_calls, answer, input_tokens, output_tokens, cost_usd) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            "INSERT INTO agent_runs (session_id, question, tool_calls, answer, input_tokens, output_tokens, cost_usd, "
+            "latency_ms, tool_errors, error, prompt_version) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
             (session_id, question, Json(answer.tool_calls, dumps=lambda o: json.dumps(o, default=str)),
-             answer.text, answer.input_tokens, answer.output_tokens, answer.cost_usd),
+             answer.text, answer.input_tokens, answer.output_tokens, answer.cost_usd,
+             answer.latency_ms, answer.tool_errors, answer.error, PROMPT_VERSION),
         )
         cur.execute(f"DELETE FROM agent_runs WHERE asked_at < now() - interval '{RETENTION_DAYS} days'")

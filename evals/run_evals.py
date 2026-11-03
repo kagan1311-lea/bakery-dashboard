@@ -109,9 +109,10 @@ def main():
             w = csv.writer(f)
             if new:
                 w.writerow(["run_at", "commit", "model", "effort", "cases", "runs", "passed", "pass_rate",
-                            "input_tokens", "output_tokens", "cost_usd"])
+                            "input_tokens", "output_tokens", "cost_usd", "prompt_version"])
             w.writerow([datetime.now().isoformat(timespec="seconds"), git_commit(), agent.MODEL, agent.EFFORT,
-                        len(cases), args.runs, passed, f"{rate:.2f}", tokens_in, tokens_out, f"{cost:.5f}"])
+                        len(cases), args.runs, passed, f"{rate:.2f}", tokens_in, tokens_out, f"{cost:.5f}",
+                        agent.PROMPT_VERSION])
 
 
 if __name__ == "__main__":
