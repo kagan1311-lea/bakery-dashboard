@@ -103,6 +103,7 @@ Every query runs inside a `SET TRANSACTION READ ONLY` transaction, so Postgres i
 | Our wallet, hard stop | Anthropic Console | Workspace `bakery-dashboard` spend limit; the API key lives in that workspace |
 | Agent loop | `agent.py` | Max 3 tool calls per question · 20 s timeout per model call, 2 retries · a cut answer (`max_tokens`) is replaced by a clear message · a DB error inside the tool goes back to the model as `is_error` |
 | Page | `app.py` | Timeout, API, DB and unexpected errors each show a short Hebrew message and are logged (`bakery.ask` logger → Railway logs); the dashboard above keeps working |
+| Alerts | `alerts.py` | Each ask-box error emails the site maintainer: at most 1 email per error type per 15 min; secrets masked; off while `ALERT_EMAIL` is empty |
 
 ## Hosting (Part 2 — planned)
 
@@ -124,10 +125,12 @@ Every query runs inside a `SET TRANSACTION READ ONLY` transaction, so Postgres i
 | `DATABASE_URL` | app (dashboard + agent; tool queries in READ ONLY transactions) | `.env` | Variables (Postgres plugin reference; use the *internal* URL) |
 | `DATABASE_ADMIN_URL` | `load_data.py` only (needs write) | `.env` (Railway's *public* URL) | not set — the service never writes `sales` |
 | `ANTHROPIC_API_KEY` | `agent.py` | `.env` | Variables |
+| `ALERT_EMAIL` | `alerts.py`: the site maintainer's address; empty = no emails | `.env` | Variables (next stage) |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | `alerts.py`: Gmail SMTP with an app password | `.env` | Variables (next stage) |
 
 `.env` is in `.gitignore`. `.env.example` lists these names with no values.
 
-**Check:** `git log -p | grep -E "sk-ant|rlwy\.net"` must come back empty. The only connection string in the repo is CI's throwaway `postgres:postgres@localhost` container.
+**Check:** `git log -p | grep -E "sk-ant-[a-z0-9]+-[A-Za-z0-9_-]{20,}|rlwy\.net"` must come back empty (a real key is long; `alerts.py` only holds the masking pattern). The only connection string in the repo is CI's throwaway `postgres:postgres@localhost` container.
 
 **CI** (`.github/workflows/ci.yml`) needs no secrets: Postgres is a service container and the model is mocked.
 
