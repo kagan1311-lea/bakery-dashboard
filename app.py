@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 import agent
 import alerts
 import db
+import limits
 
 load_dotenv(".env")
 log = logging.getLogger("bakery.ask")
@@ -143,9 +144,29 @@ def report_failure(question, error):
     except psycopg2.Error:
         log.warning("could not log the failed ask")
 
-with st.form("ask"):
-    question = st.text_input("שאלה", placeholder="למשל: מה נמכר הכי טוב בשבוע שעבר?", max_chars=500)
-    asked = st.form_submit_button("אישור")
+
+def budget_left():
+    """False once this month's spend reached the cap. If the DB can't tell, let the ask path handle it."""
+    try:
+        conn = db.connect()
+        try:
+            return not limits.over_budget(conn)
+        finally:
+            conn.close()
+    except psycopg2.Error:
+        return True
+
+
+box_open = budget_left()
+if box_open:
+    with st.form("ask"):
+        question = st.text_input(
+            "שאלה", placeholder="למשל: מה נמכר הכי טוב בשבוע שעבר?", max_chars=limits.MAX_QUESTION_CHARS
+        )
+        asked = st.form_submit_button("אישור")
+else:
+    st.info(limits.OVER_BUDGET)
+    asked = False
 
 if asked and question.strip():
     answer = None
@@ -153,8 +174,11 @@ if asked and question.strip():
         conn = None
         try:
             conn = db.connect()
-            answer = agent.ask(question.strip(), conn)
-            agent.log_run(conn, session_id, question.strip(), answer)
+            if stop := limits.blocked(conn, session_id, question.strip()):  # checked before the model is called
+                st.warning(stop)
+            else:
+                answer = agent.ask(question.strip(), conn)
+                agent.log_run(conn, session_id, question.strip(), answer)
         except anthropic.APITimeoutError as e:
             log.warning("ask timed out: %r", question)
             report_failure(question, e)
