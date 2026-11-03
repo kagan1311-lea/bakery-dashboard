@@ -127,3 +127,11 @@ def test_ask_error_emails_the_maintainer(sales, schema_url, monkeypatch):
     monkeypatch.setattr("alerts.send_error_alert", lambda *args: calls.append(args))
     ask_on_page(monkeypatch, schema_url, RuntimeError("boom"))
     assert calls == [("RuntimeError", "מה נמכר הכי טוב?", "boom")]
+
+
+def test_failed_ask_is_written_to_agent_runs(sales, schema_url, monkeypatch):
+    monkeypatch.setattr("alerts.send_error_alert", lambda *args: None)
+    ask_on_page(monkeypatch, schema_url, RuntimeError("boom"))
+    with sales.cursor() as cur:
+        cur.execute("SELECT question, error FROM agent_runs")
+        assert cur.fetchall() == [("מה נמכר הכי טוב?", "RuntimeError: boom")]

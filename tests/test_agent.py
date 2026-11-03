@@ -163,3 +163,23 @@ def test_default_client_has_a_timeout(sales, monkeypatch):
     monkeypatch.setattr(agent.anthropic, "Anthropic", fake_anthropic)
     agent.ask("?", sales)
     assert made == {"timeout": agent.TIMEOUT_S, "max_retries": agent.MAX_RETRIES}
+
+
+def test_run_logs_latency_tool_errors_and_prompt_version(sales):
+    client = FakeClient(
+        tool_use({"metric": "nope", "start_date": str(START), "end_date": str(END)}),
+        text("אין לי את הנתון."),
+    )
+    answer = agent.ask("?", sales, client)
+    assert answer.tool_errors == 1 and answer.latency_ms >= 0 and answer.error is None
+    agent.log_run(sales, "s1", "?", answer)
+    with sales.cursor() as cur:
+        cur.execute("SELECT latency_ms, tool_errors, error, prompt_version FROM agent_runs")
+        assert cur.fetchone() == (answer.latency_ms, 1, None, agent.PROMPT_VERSION)
+
+
+def test_failed_ask_is_logged_with_its_error(sales):
+    agent.log_run(sales, "s1", "?", agent.Answer(text="", error="APITimeoutError: Request timed out."))
+    with sales.cursor() as cur:
+        cur.execute("SELECT answer, error, tool_errors FROM agent_runs")
+        assert cur.fetchone() == ("", "APITimeoutError: Request timed out.", 0)

@@ -65,7 +65,7 @@ The UI and the backend are one Streamlit process. There is no separate API, beca
 |---|---|---|
 | `sales` | `id` (serial) | `sold_at` timestamp, `ticket_number` int, `article` text (Hebrew), `category` text (Hebrew), `quantity` int (negative = return), `unit_price` numeric(8,2) ILS |
 | `weather` | `date` | `cloud_cover` int (0–8), `temperature_c` numeric, `wind_speed` int, `weather_code` int (nullable) |
-| `agent_runs` | `id` (serial) | `asked_at` timestamptz, `session_id` text, `question` text, `tool_calls` jsonb, `answer` text, `input_tokens` int, `output_tokens` int, `cost_usd` numeric(8,5) |
+| `agent_runs` | `id` (serial) | `asked_at` timestamptz, `session_id` text, `question` text, `tool_calls` jsonb, `answer` text, `input_tokens` int, `output_tokens` int, `cost_usd` numeric(8,5), `latency_ms` int, `tool_errors` int, `error` text (failed asks), `prompt_version` text |
 
 - Index on `sales(sold_at)`, because every query filters by date.
 - The schema lives in `schema.sql` and `load_data.py` runs it (`CREATE TABLE IF NOT EXISTS`). Nobody creates tables by hand.
@@ -91,6 +91,7 @@ Every query runs inside a `SET TRANSACTION READ ONLY` transaction, so Postgres i
 - **max_tokens:** 512 per call. Answers are 2–4 sentences.
 - **System prompt:** cached (prompt caching), since it is identical on every call.
 - **History:** none. Each question stands alone (spec §3).
+- **Prompt version:** `PROMPT_VERSION` in `agent.py` (now `v3`), bumped on every change to the prompt, notes, tool, model or effort. Logged in `agent_runs` and `evals/history.csv`, so a wrong answer can be traced to the prompt that gave it.
 - **Notebook:** `notes/products.md` (products, synonyms, plurals, how to search) is appended to the cached system prompt. Edit it when the product list changes.
 
 ## Limits
